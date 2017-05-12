@@ -104,6 +104,3 @@ s.set_graph2(x_i, y_i, "graph2", color=6)
 s.set_graph3(x_u, y_u, "graph3", color=9)
 
 s.Draw()
-# c2 = ROOT.TCanvas()
-# sig2 = SuperImposiveGraph3("kek")
-# sig2.Draw()
