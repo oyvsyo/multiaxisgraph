@@ -96,7 +96,7 @@ y_i = arr(random.sample(range(20), 20))
 c = ROOT.TCanvas()
 
 s = SuperImposiveGraph3()
-# sig.set_graph1()
+
 s.set_graph1(x_t, y_t, "gaph1",)
 
 s.set_graph2(x_i, y_i, "graph2", color=6)
