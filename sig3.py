@@ -13,9 +13,27 @@ def set_graph_attributes(graph, n_points=0, x=[], y=[], title="graph title", col
     graph.SetLineColor(color)
     graph.SetLineWidth(line_width)
 
-# def set_axis_attributes(axis, x1, y1, x2, y2, , ):
+def set_axis_attributes(axis, x1=0.8, y1=0.1, x2=0.8, y2=0.9, min=0, max=1, title=""):
+    axis.SetX1(x1)
+    axis.SetY1(y1)
+    axis.SetX2(x2)
+    axis.SetY2(y2)
+    axis.SetWmin(min)
+    axis.SetWmax(max)
+    axis.SetTitle(title)
 
-
+def scale(bottom, top, y, default_scale=1):
+    delta_x = top-bottom
+    delta_y = max(y)-min(y)
+    if delta_y == 0:
+        alpha = 1/default_scale
+        beta = bottom
+        y_norm = [beta  for i in range(len(y))]
+    else:
+        alpha = delta_x/delta_y
+        beta = top-alpha*max(y)
+        y_norm = [y[i]*alpha+beta  for i in range(len(y))]
+    return [alpha, beta, arr(y_norm)]
 
 class SuperImposiveGraph3(ROOT.TObject):
 
@@ -44,14 +62,23 @@ class SuperImposiveGraph3(ROOT.TObject):
         self.hist.SetTitle(title)
         # print "len(x) ", len(x)
         self.hist.GetXaxis().SetRangeUser(min(x), max(x))
-        self.hist.GetYaxis().SetRangeUser(min(y),max(y))
+        self.hist.GetYaxis().SetRangeUser(min(y), max(y))
 
     def set_graph2(self, x=[], y=[], title="graph title", color=1, line_width=1):
-        set_graph_attributes(self.graph2, len(x), x, y, title, color, line_width)
+        bottom = self.graph1.GetMaximum()
+        print bottom
+        top = self.graph1.GetMaximum()
+        print top
+        [alpha, beta, y_scale] = scale(bottom, top, y)
+        self.set_axis0((bottom-beta)/alpha,(top-beta)/alpha, "axis0 for graph2")
         # print "in function set_graph_attributes n = ", self.graph2.GetN()
+        set_graph_attributes(self.graph2, len(x), x, y_scale, title, color, line_width)
 
     def set_graph3(self, x=[], y=[], title="graph title", color=1, line_width=1):
         set_graph_attributes(self.graph3, len(x), x, y, title, color, line_width)
+
+    def set_axis0(self, min=0, max=1, title=""):
+        set_axis_attributes(self.axis_pad0, min=min, max=max, title=title)
 
     def __str__(self):
         return "class SuperImposiveGraph3 - %s" %self.name
@@ -82,8 +109,8 @@ class SuperImposiveGraph3(ROOT.TObject):
         self.graph1.Draw()
         self.pad2.Update()
         self.graph2.Draw()
-        self.pad2.Update()
-        self.graph3.Draw()
+        # self.pad2.Update()
+        # self.graph3.Draw()
         self.pad2.Update()
 
 x_t = arr(range(18))
@@ -101,6 +128,6 @@ s.set_graph1(x_t, y_t, "gaph1",)
 
 s.set_graph2(x_i, y_i, "graph2", color=6)
 
-s.set_graph3(x_u, y_u, "graph3", color=9)
+# s.set_graph3(x_u, y_u, "graph3", color=9)
 
 s.Draw()
