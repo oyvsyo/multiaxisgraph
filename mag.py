@@ -1,6 +1,5 @@
 import ROOT
 from array import array
-import random
 
 def arr(x):
     return array("d", x)
@@ -62,13 +61,24 @@ class MultiAxisGraph(ROOT.TObject):
             self.name = str(self.GetUniqueID())
         self.graphs_info = {"base":[], "right":[], "left":[]}
         self.graphs = {"base":[], "right":[], "left":[]}
-        self.axis = {"left":[]}
+        self.axis = {"left":[], "right":0}
         self.pads = []
         self.graph = ROOT.TMultiGraph()
         self.scale_coefs = {}
         # self.pad_width = 0.08
         # self.pad = ROOT.TPad("pad0_"+self.name, "pad0_"+self.name, .0, .0, 1, 1., 45, -1, -2)
 
+    def GetBaseGraphs(self):
+        """return a list of base graphs"""
+        return self.graphs["base"]
+
+    def GetRightGraphs(self):
+        """return a list of right graphs"""
+        return self.graphs["right"]
+
+    def GetLeftGraphs(self):
+        """return a list of left graphs"""
+        return self.graphs["left"]
 
     def AddGraph(self, x=[], y=[], color=1, line_width=1, mode="base"):
         """Just add info about graph, to create it when user call <Draw()> method"""
@@ -106,6 +116,7 @@ class MultiAxisGraph(ROOT.TObject):
                                          (y_axis_max-b)/a,
                                          510,
                                          "+L")
+        self.axis["right"].SetLineColor(self.graphs_info["right_scaled"][0][2])
 
 
     def SetTitle(self, title=0):
@@ -132,26 +143,35 @@ class MultiAxisGraph(ROOT.TObject):
         """Create all needed objects and draw them all """
         self.__create_graphs("base")
         self.graph.Draw("AL")
-        ROOT.gPad.Update()
         if len(self.graphs_info["right"])!=0:
             self.__scale()
             self.__create_graphs("right_scaled")
             self.graph.Draw("AL")
             self.axis["right"].Draw()
-            ROOT.gPad.Update()
+        ROOT.gPad.Update()
+
+    def Update(self):
+        self.graph.Draw("AL")
+        if len(self.graphs_info["right"])!=0:
+            self.axis["right"].Draw()
+        ROOT.gPad.Update()
 
 
-x_t = arr(range(18))
-x_u = arr(range(18))
-x_i = arr(range(18))
-y_t = arr(random.sample(range(20), 18))
-y_u = arr(random.sample(range(20), 18))
-y_i = arr(random.sample(range(20, 40, 1), 18))
+ROOT.gRandom.SetSeed()
+rndm = ROOT.gRandom.Rndm
+
+x = arr(range(200))
+y_t = arr(map(lambda i: i*rndm(1)+47., x))
+y_u = arr(map(lambda i: i**0.5+rndm(2), x))
+y_i = arr(map(lambda i: ROOT.TMath.Sin(i), x))
 
 c = ROOT.TCanvas()
 
 s = MultiAxisGraph()
 s.SetTitle("test MultiAxisGraph")
-s.AddGraph(x_t, y_t)
-s.AddGraph(x_i, y_i, color=3, mode="right")
+s.AddGraph(x, y_t)
+s.AddGraph(x, y_i, color=4, mode="right")
+s.AddGraph(x, y_u, color=3, mode="right")
 s.Draw()
+
+c.Update()
