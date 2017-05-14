@@ -21,7 +21,7 @@ def scale(bottom, top, min_y, max_y, default_scale=1):
         # y_norm = [beta  for i in range(len(y))]
     else:
         alpha = delta_x/delta_y
-        beta = top-alpha*max(y)
+        beta = top-alpha*max_y
         # y_norm = [y[i]*alpha+beta  for i in range(len(y))]
     return [alpha, beta]
 
@@ -31,7 +31,9 @@ def range_y(ys):
     bottom = min(map(lambda y: min(y), ys))
     return [bottom, top]
 
-# def set_axis_attributes(axis, x1, y1, x2, y2, , ):
+def linear_transformation(a, b, y):
+    return map(lambda i: a*i+b, y)
+
 
 class MultiAxisGraphError(Exception):
     """Basic exception for errors raised by MultiAxisGraph"""
@@ -49,7 +51,7 @@ class UnificatedMAGError(MultiAxisGraphError):
 
 
 class MultiAxisGraph(ROOT.TObject):
-
+    """MultiAxisGraph object allows t odraw multiple graphs and axis"""
     def __init__(self, name=None):
 
         super(MultiAxisGraph, self).__init__()
@@ -63,69 +65,44 @@ class MultiAxisGraph(ROOT.TObject):
         self.axis = {"left":[]}
         self.pads = []
         self.graph = ROOT.TMultiGraph()
+        self.scale_coefs = {}
         # self.pad_width = 0.08
         # self.pad = ROOT.TPad("pad0_"+self.name, "pad0_"+self.name, .0, .0, 1, 1., 45, -1, -2)
 
 
-    def AddGraph(self, x=[], y=[], axis=0, color=1, line_width=1):
-        if axis==0:
-            self.AddBaseGraph(x, y, color, line_width)
-        elif axis==1:
-            self.AddRightGraph(x, y, color, line_width)
-        elif axis==-1:
-            self.AddLeftGraph(x, y, color, line_width)
-        else:
-            raise UnificatedMAGError
-        # self.AddBaseGraph(x, y, color, line_width)
-        # if use_axis==1:
-        #     k = len(self.pads)
-        #     self.pads += ROOT.TPad()
-        #     self.axis += ROOT.TGaxis()
-        # if use_axis==-1:
-        #     max_x = max(x)
-        #     [alpha, beta, y_scale] = scale(self.bottom, self.top, y)
-        #     self.right_axis = ROOT.TGaxis(max_x, 0.1, max_x, 0.9, )
+    def AddGraph(self, x=[], y=[], color=1, line_width=1, mode="base"):
+        """Just add info about graph, to create it when user call <Draw()> method"""
+        self.graphs_info[mode] += [[x, y, color, line_width]]
 
+    def __create_graphs(self, mode):
+        """'Private' method to create ROOT.TGraph objects and add them to MAG attribute <graph>"""
+        self.graphs[mode] = []
+        self.graphs[mode] += [ROOT.TGraph(len(item[0]), item[0], item[1]) for item in self.graphs_info[mode]]
+        n_base_graphs = len(self.graphs[mode])
+        for i in range(n_base_graphs):
+            set_graph_attributes(self.graphs[mode][i], self.graphs_info[mode][i][2], self.graphs_info[mode][i][3])
+        map(lambda g: self.graph.Add(g), self.graphs[mode])
 
-    def AddBaseGraph(self, x=[], y=[], color=1, line_width=1):
-        self.graphs_info["base"] += [[x, y, color, line_width]]
+    def __scale(self):
+        """create new info about scaled graphs"""
+        self.graphs_info["right_scaled"] = []
+        [bottom, top] = range_y(map(lambda item: item[1], self.graphs_info["right"]))
+        [y_base_min, y_base_max] = range_y(map(lambda item: item[1], self.graphs_info["base"]))
+        [a, b] = scale(y_base_min, y_base_max, bottom, top)
+        self.scale_coefs["right"] = [a, b]
+        # n_right_graphs = len(self.graphs_info["right"])
+        self.graphs_info["right_scaled"] = map(lambda item: [item[0], linear_transformation(a, b, item[1]), item[2], item[3]], self.graphs_info["right"])
 
-    def AddRightGraph(self, x=[], y=[], color=1, line_width=1):
-        self.graphs_info["right"] += [[x, y, color, line_width]]
-
-    def AddLeftGraph(self, x=[], y=[], color=1, line_width=1):
-        self.graphs_info["left"] += [[x, y, color, line_width]]
-
-    def Scaling(self):
-
-
-
-    # def CreateGraphs
-
-
-    #     self.graphs_info += ROOT.TGraph(len(x), x, y)
-    #     i = len(self.graphs_info)-1
-    #     self.graphs_info[i].SetName("graph_%i" %i)
-    #     if self.bottom > min(y):
-    #         self.bottom = min(y)
-    #     if self.top < max(y):
-    #         self.top = max(y)
-    #     set_graph_attributes(self.graphs_info[i], color, line_width)
-
-    # def SetPads(self):
-    #     k = len(self.pads)
-    #     self.pad_width = 1-0.5/(k+1)
-    #     self.pad.SetPad(pad_width, 0., 0., 1.)
-    #     map(lambda p: p.SetPad((1-self.pad_width)))
 
     def SetTitle(self, title=0):
+        """use this to set graph title"""
         try:
             self.graph.SetTitle(title)
         except Exception:
             raise UnificatedMAGError
 
     def __str__(self):
-        return "class MultiAxisGraph - %s" %self.name
+        return "MultiAxisGraph object - %s " %self.name
 
     def __repr__(self):
         return "<MultiAxisGraph object at 0x%0x>" %id(self)
@@ -134,22 +111,29 @@ class MultiAxisGraph(ROOT.TObject):
         return self
 
     def __exit__(self):
+        """delete ROOT.TObject when program exit"""
         delete(super(MultiAxisGraph, self))
 
     def Draw(self):
-        self.graphs["base"] = []
-        self.graphs["base"] += [ROOT.TGraph(len(item[0]), item[0], item[1]) for item in self.graphs_info["base"]]
-        n_base_graphs = len(self.graphs["base"])
-        for i in range(n_base_graphs):
-            set_graph_attributes(self.graphs["base"][i], self.graphs_info["base"][i][2], self.graphs_info["base"][i][3])
-        map(lambda g: self.graph.Add(g), self.graphs["base"])
+        """Create all needed objects and draw them all """
+        # self.graphs["base"] = []
+        # self.graphs["base"] += [ROOT.TGraph(len(item[0]), item[0], item[1]) for item in self.graphs_info["base"]]
+        # n_base_graphs = len(self.graphs["base"])
+        # for i in range(n_base_graphs):
+        #     set_graph_attributes(self.graphs["base"][i], self.graphs_info["base"][i][2], self.graphs_info["base"][i][3])
+        # map(lambda g: self.graph.Add(g), self.graphs["base"])
+        self.__create_graphs("base")
         self.graph.Draw("AL")
         ROOT.gPad.Update()
         x_axis_min = self.graph.GetXaxis().GetXmin()
         x_axis_max = self.graph.GetXaxis().GetXmax()
         y_axis_min = self.graph.GetYaxis().GetXmin()
         y_axis_max = self.graph.GetYaxis().GetXmax()
-
+        if len(self.graphs_info["right"])!=0:
+            self.__scale()
+            self.__create_graphs("right")
+            self.graph.Draw("AL")
+            ROOT.gPad.Update()
 
 
 x_t = arr(range(18))
@@ -166,12 +150,5 @@ s.SetTitle("test MultiAxisGraph")
 # sig.set_graph1()
 s.AddGraph(x_t, y_t)
 
-s.AddGraph(x_i, y_i, color=3)
+s.AddGraph(x_i, y_i, color=3, mode="right")
 s.Draw()
-#
-# s.AddGraph(x_u, y_u)
-#
-# s.Draw()
-# c2 = ROOT.TCanvas()
-# sig2 = MultiAxisGraph("kek")
-# sig2.Draw()
