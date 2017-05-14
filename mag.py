@@ -90,8 +90,22 @@ class MultiAxisGraph(ROOT.TObject):
         [y_base_min, y_base_max] = range_y(map(lambda item: item[1], self.graphs_info["base"]))
         [a, b] = scale(y_base_min, y_base_max, bottom, top)
         self.scale_coefs["right"] = [a, b]
-        # n_right_graphs = len(self.graphs_info["right"])
-        self.graphs_info["right_scaled"] = map(lambda item: [item[0], linear_transformation(a, b, item[1]), item[2], item[3]], self.graphs_info["right"])
+        # some bugs here with types in python and ROOT
+        # self.graphs_info["right_scaled"] = map(lambda item: [item[0], linear_transformation(a, b, item[1]), item[2], item[3]], self.graphs_info["right"])
+        # so i must add func "arr()" when setting up the data to right_scaled graphs
+        self.graphs_info["right_scaled"] = map(lambda item: [arr(item[0]), arr(linear_transformation(a, b, item[1])), item[2], item[3]], self.graphs_info["right"])
+        y_axis_min = self.graph.GetYaxis().GetXmin()
+        y_axis_max = self.graph.GetYaxis().GetXmax()
+        x_axis_max = self.graph.GetXaxis().GetXmax()
+
+        self.axis["right"] = ROOT.TGaxis(x_axis_max,
+                                         y_axis_min,
+                                         x_axis_max,
+                                         y_axis_max,
+                                         (y_axis_min-b)/a,
+                                         (y_axis_max-b)/a,
+                                         510,
+                                         "+L")
 
 
     def SetTitle(self, title=0):
@@ -116,39 +130,28 @@ class MultiAxisGraph(ROOT.TObject):
 
     def Draw(self):
         """Create all needed objects and draw them all """
-        # self.graphs["base"] = []
-        # self.graphs["base"] += [ROOT.TGraph(len(item[0]), item[0], item[1]) for item in self.graphs_info["base"]]
-        # n_base_graphs = len(self.graphs["base"])
-        # for i in range(n_base_graphs):
-        #     set_graph_attributes(self.graphs["base"][i], self.graphs_info["base"][i][2], self.graphs_info["base"][i][3])
-        # map(lambda g: self.graph.Add(g), self.graphs["base"])
         self.__create_graphs("base")
         self.graph.Draw("AL")
         ROOT.gPad.Update()
-        x_axis_min = self.graph.GetXaxis().GetXmin()
-        x_axis_max = self.graph.GetXaxis().GetXmax()
-        y_axis_min = self.graph.GetYaxis().GetXmin()
-        y_axis_max = self.graph.GetYaxis().GetXmax()
         if len(self.graphs_info["right"])!=0:
             self.__scale()
-            self.__create_graphs("right")
+            self.__create_graphs("right_scaled")
             self.graph.Draw("AL")
+            self.axis["right"].Draw()
             ROOT.gPad.Update()
 
 
 x_t = arr(range(18))
-x_u = arr(range(10))
-x_i = arr(range(20))
+x_u = arr(range(18))
+x_i = arr(range(18))
 y_t = arr(random.sample(range(20), 18))
-y_u = arr(random.sample(range(20), 10))
-y_i = arr(random.sample(range(20), 20))
+y_u = arr(random.sample(range(20), 18))
+y_i = arr(random.sample(range(20, 40, 1), 18))
 
 c = ROOT.TCanvas()
 
 s = MultiAxisGraph()
 s.SetTitle("test MultiAxisGraph")
-# sig.set_graph1()
 s.AddGraph(x_t, y_t)
-
 s.AddGraph(x_i, y_i, color=3, mode="right")
 s.Draw()
