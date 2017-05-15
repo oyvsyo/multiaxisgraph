@@ -66,6 +66,6 @@ c.Update()
 
 After executing example you will get the canvas:
 
-![alttext](https://raw.githubusercontent.com/username/projectname/branch/path/to/img.png)
+![alttext](https://raw.githubusercontent.com/oyvsyo/multiaxisgraph/master/example.jpg)
 
 ## License
