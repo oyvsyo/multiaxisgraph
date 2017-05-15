@@ -22,13 +22,16 @@ def set_graph_y(graph, y):
         gety[i] = y[i]
 
 def get_graph_y(graph):
+    """returns a list of y's coordinates of points in graph"""
     gety = graph.GetY()
     return map(lambda i: gety[i], range(graph.GetN()))
 
 def add_graphs(multigraph, graphs):
+    """adds graphs to multigraph"""
     map(lambda g: multigraph.Add(g), graphs)
 
 def scale(bottom, top, min_y, max_y, default_scale=1):
+    """scale linear transformation from bottom top to y_min, y_max"""
     delta_x = top-bottom
     delta_y = max_y -min_y
     if delta_y == 0:
@@ -40,7 +43,7 @@ def scale(bottom, top, min_y, max_y, default_scale=1):
     return [alpha, beta]
 
 def range_y(ys):
-    # xs structure is [[y1], [y2], ...]
+    """returns min(min()) & max(max()) of list of lists"""
     top = max(map(lambda y: max(y), ys))
     bottom = min(map(lambda y: min(y), ys))
     return [bottom, top]
@@ -108,16 +111,8 @@ class MultiAxisGraph(ROOT.TObject):
         [y_base_min, y_base_max] = range_y(map(lambda graph: get_graph_y(graph), self.graphs["base"]))
         [a, b] = scale(y_base_min, y_base_max, bottom, top)
         self.scale_coefs["right"] = [a, b]
-        # some bugs here with types in python and ROOT
-        # self.graphs_info["right_scaled"] = root copymap(lambda item: [item[0], linear_transformation(a, b, item[1]), item[2], item[3]], self.graphs_info["right"])
-        # so i must add func "arr()" when setting up the data to right_scaled graphs
         self.graphs["right_scaled"] = deepcopy(self.graphs["right"])
         n = len(self.graphs["right"])
-        # for i in range(n):
-        #     y = linear_transformation(a, b, get_graph_y(self.graphs["right"][i]))
-        #     set_graph_y(self.graphs["right_scaled"][i], y)
-        #     # y_new = get_graph_y(self.graphs["right_scaled"][i])
-        #     print y
         map(lambda i: set_graph_y(self.graphs["right_scaled"][i], linear_transformation(a, b,get_graph_y(self.graphs["right"][i]))), range(n))
         y_axis_min = self.graph.GetYaxis().GetXmin()
         y_axis_max = self.graph.GetYaxis().GetXmax()
