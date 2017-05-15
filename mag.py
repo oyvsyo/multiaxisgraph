@@ -126,6 +126,10 @@ class MultiAxisGraph(ROOT.TObject):
                                          (y_axis_max-b)/a,
                                          510,
                                          "+L")
+        self.axis["right"].SetTitleFont(42)
+        self.axis["right"].SetTitleSize(0.035)
+        self.axis["right"].SetLabelFont(42)
+        self.axis["right"].SetLabelSize(0.035)
 
     def __str__(self):
         return "MultiAxisGraph object - %s " %self.name
@@ -153,43 +157,6 @@ class MultiAxisGraph(ROOT.TObject):
 
     def Update(self):
         self.graph.Draw("AL")
-        if len(self.graphs_info["right"])!=0:
+        if len(self.graphs["right"])!=0:
             self.axis["right"].Draw()
         ROOT.gPad.Update()
-
-
-ROOT.gRandom.SetSeed()
-rndm = ROOT.gRandom.Rndm
-
-x = arr(range(100))
-y_t = arr(map(lambda i: i*rndm(1)+47., x))
-y_u = arr(map(lambda i: i**0.5+rndm(2), x))
-y_i = arr(map(lambda i: ROOT.TMath.Sin(i), x))
-
-c = ROOT.TCanvas()
-
-s = MultiAxisGraph()
-
-gr1 = ROOT.TGraph(len(x), x, y_t)
-gr2 = ROOT.TGraph(len(x), x, y_u)
-gr2.SetLineColor(9)
-gr3 = ROOT.TGraph(len(x), x, y_i)
-gr3.SetLineColor(9)
-
-
-s.AddGraph(gr1)
-s.AddGraph(gr2, mode="right")
-s.AddGraph(gr3, mode="right")
-
-s.Draw()
-
-mlt_graph = s.GetMultigraph()
-mlt_graph.SetTitle("test MultiAxisGraph")
-
-rigth_axis = s.GetRightAxis()
-rigth_axis.SetTitle("rigth axis")
-rigth_axis.SetLineColor(9)
-rigth_axis.SetLabelFont(42)
-rigth_axis.SetTitleFont(42)
-
-c.Update()
