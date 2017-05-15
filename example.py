@@ -15,7 +15,7 @@ gr1.SetLineWidth(2)
 gr2 = ROOT.TGraph(len(x2), x2, y2)
 gr2.SetTitle("y = sin(x)")
 gr2.SetLineWidth(2)
-gr2.SetLineColor(9)
+gr2.SetLineColor(ROOT.kBlue)
 # create MultiAxisGraph object
 MAG = mag.MultiAxisGraph()
 # adding graphs to mag object
@@ -31,7 +31,7 @@ mlt_graph.GetXaxis().SetTitle("x")
 # accses to rigth axis for setting it's attributes
 rigth_axis = MAG.GetRightAxis()
 rigth_axis.SetTitle("axis for sin(x) graph")
-rigth_axis.SetLineColor(9)
+rigth_axis.SetLineColor(ROOT.kBlue)
 rigth_axis.SetLabelFont(42)
 rigth_axis.SetTitleFont(42)
 # update the canvas so changes is applied
