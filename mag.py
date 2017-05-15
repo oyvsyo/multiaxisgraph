@@ -1,15 +1,32 @@
 import ROOT
 from array import array
+from copy import deepcopy
 
 def arr(x):
     return array("d", x)
 
-def set_graph_attributes(graph, color=1, line_width=1):
+def set_graph_attributes(graph, color=1, line_width=1, name="", title=""):
     try:
         graph.SetLineColor(color)
         graph.SetLineWidth(line_width)
+        if title:
+            graph.SetTitle(title)
+        if name:
+            graph.SetName(name)
     except Exception:
         raise UnificatedMAGError
+
+def set_graph_y(graph, y):
+    gety = graph.GetY()
+    for i in range(graph.GetN()):
+        gety[i] = y[i]
+
+def get_graph_y(graph):
+    gety = graph.GetY()
+    return map(lambda i: gety[i], range(graph.GetN()))
+
+def add_graphs(multigraph, graphs):
+    map(lambda g: multigraph.Add(g), graphs)
 
 def scale(bottom, top, min_y, max_y, default_scale=1):
     delta_x = top-bottom
@@ -17,11 +34,9 @@ def scale(bottom, top, min_y, max_y, default_scale=1):
     if delta_y == 0:
         alpha = 1/default_scale
         beta = bottom
-        # y_norm = [beta  for i in range(len(y))]
     else:
         alpha = delta_x/delta_y
         beta = top-alpha*max_y
-        # y_norm = [y[i]*alpha+beta  for i in range(len(y))]
     return [alpha, beta]
 
 def range_y(ys):
@@ -59,14 +74,14 @@ class MultiAxisGraph(ROOT.TObject):
             self.name = name
         else:
             self.name = str(self.GetUniqueID())
-        self.graphs_info = {"base":[], "right":[], "left":[]}
         self.graphs = {"base":[], "right":[], "left":[]}
-        self.axis = {"left":[], "right":0}
+        self.axis = {"left":[], "right":[]}
         self.pads = []
         self.graph = ROOT.TMultiGraph()
         self.scale_coefs = {}
-        # self.pad_width = 0.08
-        # self.pad = ROOT.TPad("pad0_"+self.name, "pad0_"+self.name, .0, .0, 1, 1., 45, -1, -2)
+
+    def GetMultigraph(self,):
+        return self.graph
 
     def GetBaseGraphs(self):
         """return a list of base graphs"""
@@ -80,30 +95,30 @@ class MultiAxisGraph(ROOT.TObject):
         """return a list of left graphs"""
         return self.graphs["left"]
 
-    def AddGraph(self, x=[], y=[], color=1, line_width=1, mode="base"):
-        """Just add info about graph, to create it when user call <Draw()> method"""
-        self.graphs_info[mode] += [[x, y, color, line_width]]
+    def GetRightAxis(self):
+        return self.axis["right"]
 
-    def __create_graphs(self, mode):
-        """'Private' method to create ROOT.TGraph objects and add them to MAG attribute <graph>"""
-        self.graphs[mode] = []
-        self.graphs[mode] += [ROOT.TGraph(len(item[0]), item[0], item[1]) for item in self.graphs_info[mode]]
-        n_base_graphs = len(self.graphs[mode])
-        for i in range(n_base_graphs):
-            set_graph_attributes(self.graphs[mode][i], self.graphs_info[mode][i][2], self.graphs_info[mode][i][3])
-        map(lambda g: self.graph.Add(g), self.graphs[mode])
+    def AddGraph(self, graph, mode="base"):
+        """Write graph to 909"""
+        self.graphs[mode] += [graph]
 
     def __scale(self):
         """create new info about scaled graphs"""
-        self.graphs_info["right_scaled"] = []
-        [bottom, top] = range_y(map(lambda item: item[1], self.graphs_info["right"]))
-        [y_base_min, y_base_max] = range_y(map(lambda item: item[1], self.graphs_info["base"]))
+        [bottom, top] = range_y(map(lambda graph: get_graph_y(graph), self.graphs["right"]))
+        [y_base_min, y_base_max] = range_y(map(lambda graph: get_graph_y(graph), self.graphs["base"]))
         [a, b] = scale(y_base_min, y_base_max, bottom, top)
         self.scale_coefs["right"] = [a, b]
         # some bugs here with types in python and ROOT
-        # self.graphs_info["right_scaled"] = map(lambda item: [item[0], linear_transformation(a, b, item[1]), item[2], item[3]], self.graphs_info["right"])
+        # self.graphs_info["right_scaled"] = root copymap(lambda item: [item[0], linear_transformation(a, b, item[1]), item[2], item[3]], self.graphs_info["right"])
         # so i must add func "arr()" when setting up the data to right_scaled graphs
-        self.graphs_info["right_scaled"] = map(lambda item: [arr(item[0]), arr(linear_transformation(a, b, item[1])), item[2], item[3]], self.graphs_info["right"])
+        self.graphs["right_scaled"] = deepcopy(self.graphs["right"])
+        n = len(self.graphs["right"])
+        # for i in range(n):
+        #     y = linear_transformation(a, b, get_graph_y(self.graphs["right"][i]))
+        #     set_graph_y(self.graphs["right_scaled"][i], y)
+        #     # y_new = get_graph_y(self.graphs["right_scaled"][i])
+        #     print y
+        map(lambda i: set_graph_y(self.graphs["right_scaled"][i], linear_transformation(a, b,get_graph_y(self.graphs["right"][i]))), range(n))
         y_axis_min = self.graph.GetYaxis().GetXmin()
         y_axis_max = self.graph.GetYaxis().GetXmax()
         x_axis_max = self.graph.GetXaxis().GetXmax()
@@ -116,15 +131,6 @@ class MultiAxisGraph(ROOT.TObject):
                                          (y_axis_max-b)/a,
                                          510,
                                          "+L")
-        self.axis["right"].SetLineColor(self.graphs_info["right_scaled"][0][2])
-
-
-    def SetTitle(self, title=0):
-        """use this to set graph title"""
-        try:
-            self.graph.SetTitle(title)
-        except Exception:
-            raise UnificatedMAGError
 
     def __str__(self):
         return "MultiAxisGraph object - %s " %self.name
@@ -141,11 +147,11 @@ class MultiAxisGraph(ROOT.TObject):
 
     def Draw(self):
         """Create all needed objects and draw them all """
-        self.__create_graphs("base")
+        add_graphs(self.graph, self.graphs["base"])
         self.graph.Draw("AL")
-        if len(self.graphs_info["right"])!=0:
+        if len(self.graphs["right"])!=0:
             self.__scale()
-            self.__create_graphs("right_scaled")
+            add_graphs(self.graph, self.graphs["right_scaled"])
             self.graph.Draw("AL")
             self.axis["right"].Draw()
         ROOT.gPad.Update()
@@ -160,7 +166,7 @@ class MultiAxisGraph(ROOT.TObject):
 ROOT.gRandom.SetSeed()
 rndm = ROOT.gRandom.Rndm
 
-x = arr(range(200))
+x = arr(range(100))
 y_t = arr(map(lambda i: i*rndm(1)+47., x))
 y_u = arr(map(lambda i: i**0.5+rndm(2), x))
 y_i = arr(map(lambda i: ROOT.TMath.Sin(i), x))
@@ -168,10 +174,27 @@ y_i = arr(map(lambda i: ROOT.TMath.Sin(i), x))
 c = ROOT.TCanvas()
 
 s = MultiAxisGraph()
-s.SetTitle("test MultiAxisGraph")
-s.AddGraph(x, y_t)
-s.AddGraph(x, y_i, color=4, mode="right")
-s.AddGraph(x, y_u, color=3, mode="right")
+
+gr1 = ROOT.TGraph(len(x), x, y_t)
+gr2 = ROOT.TGraph(len(x), x, y_u)
+gr2.SetLineColor(9)
+gr3 = ROOT.TGraph(len(x), x, y_i)
+gr3.SetLineColor(9)
+
+
+s.AddGraph(gr1)
+s.AddGraph(gr2, mode="right")
+s.AddGraph(gr3, mode="right")
+
 s.Draw()
+
+mlt_graph = s.GetMultigraph()
+mlt_graph.SetTitle("test MultiAxisGraph")
+
+rigth_axis = s.GetRightAxis()
+rigth_axis.SetTitle("rigth axis")
+rigth_axis.SetLineColor(9)
+rigth_axis.SetLabelFont(42)
+rigth_axis.SetTitleFont(42)
 
 c.Update()
