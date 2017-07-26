@@ -2,7 +2,8 @@ import ROOT
 import mag
 
 # setting up data samples
-# mag.arr() function uses for setting up a double type to numbers in sample list
+# mag.arr() function uses for setting up
+# a double type to numbers in sample list
 x1 = mag.arr(range(100))
 x2 = mag.arr(map(lambda i: i/5., range(500)))
 y1 = mag.arr(map(lambda i: i**0.5, x1))
